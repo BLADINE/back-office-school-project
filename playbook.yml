@@ -1,0 +1,48 @@
+- hosts: all
+  become: yes
+  tasks:
+      - name: Authentification sur gitlab
+        community.docker.docker_login:
+          registry_url: gitlab.robotcream.fr:5050
+          username: groupe3
+          password: "{{ user_password }}"
+
+      - name: Creation de label treafik
+        set_fact:
+          my_labels: "{{ my_labels | default({}) | combine ({ item.key : item.value }) }}"
+        with_items:
+          - { 'key': 'traefik.enable' , 'value': 'true'}
+          - { 'key': 'traefik.docker.network' , 'value': 'traefikreseau'}
+          - { 'key': 'traefik.http.routers.g3_projet_cicd_frontend_{{user_name}}{{ branch_name }}_http.entrypoints' , 'value': 'web'}
+          - { 'key': 'traefik.http.routers.g3_projet_cicd_frontend_{{user_name}}{{ branch_name }}_http.rule' , 'value': 'Host(`g3-projet-cicd-frontend-{{user_name}}{{ modified_branch_name }}.tp.robotcream.fr`)'}
+          - { 'key': 'traefik.http.middlewares.https_redirect.redirectscheme.scheme' , 'value': 'https'}
+          - { 'key': 'traefik.http.routers.g3_projet_cicd_frontend_{{user_name}}{{ branch_name }}_http.middlewares' , 'value': 'https_redirect'}
+          - { 'key': 'traefik.http.routers.g3_projet_cicd_frontend_{{user_name}}{{ branch_name }}_https.entrypoints' , 'value': 'websecure'}
+          - { 'key': 'traefik.http.routers.g3_projet_cicd_frontend_{{user_name}}{{ branch_name }}_https.rule' , 'value': 'Host(`g3-projet-cicd-frontend-{{user_name}}{{ modified_branch_name }}.tp.robotcream.fr`)'}
+          - { 'key': 'traefik.http.routers.g3_projet_cicd_frontend_{{user_name}}{{ branch_name }}_https.tls' , 'value': 'true'}
+          - { 'key': 'traefik.http.routers.g3_projet_cicd_frontend_{{user_name}}{{ branch_name }}_https.tls.certresolver' , 'value': 'myresolver'}
+          - { 'key': 'traefik.http.services.g3_projet_cicd_frontend_{{user_name}}{{ branch_name }}.loadbalancer.server.port' , 'value': '80'}
+      
+      - name: Demarage du conteneur
+        community.docker.docker_container:
+          name: g3-projet_cicd_frontend_{{user_name}}{{ branch_name }}
+          env:
+            BACKEND_ID: "{{ backend_id }}"
+          image: gitlab.robotcream.fr:5050/groupe3/projet_ci_cd_frontend:{{user_name}}{{ branch_name }}
+          pull: yes
+          labels: "{{ my_labels }}"
+          networks:
+            - name: traefikreseau
+
+      - name: Redemarage du conteneur
+        community.docker.docker_container:
+          name: g3-projet_cicd_frontend_{{user_name}}{{ branch_name }}
+          image: gitlab.robotcream.fr:5050/groupe3/projet_ci_cd_frontend:{{user_name}}{{ branch_name }}
+          env:
+            BACKEND_ID: "{{ backend_id }}"
+          labels: "{{ my_labels }}"
+          networks:
+            - name: traefikreseau
+          state: started
+          restart: yes
+
