@@ -1,0 +1,21 @@
+stages :
+    - build
+    - package
+    - deploy
+    - test
+
+include:
+    - project: 'groupe3/projet_ci_cd_template'
+      ref: 'main'
+      file: 'build.yml'
+    - project: 'groupe3/projet_ci_cd_template'
+      ref: 'main'
+      file: 'package.yml'
+    - project: 'groupe3/projet_ci_cd_template'
+      ref: 'main'
+      file: 'test.yml'
+    - project: 'groupe3/projet_ci_cd_template'
+      ref: 'main'
+      file: 'deploy.yml'
+
+
